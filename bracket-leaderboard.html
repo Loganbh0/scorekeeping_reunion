@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0066cc">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bracket Board">
+    <title>Bracket Leaderboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        body {
+            padding: 16px;
+            padding-top: 20px;
+            overflow-y: auto;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+            letter-spacing: -0.5px;
+            color: #333;
+        }
+        
+        .leaderboard {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .player-row {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #e8e8e8;
+            background: white;
+            transition: background-color 0.1s ease;
+        }
+        
+        .player-row:last-child {
+            border-bottom: none;
+        }
+        
+        .rank {
+            width: 40px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #0066cc;
+            margin-right: 12px;
+        }
+        
+        .player-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .score {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0066cc;
+            min-width: 45px;
+            text-align: right;
+            margin-right: 12px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 6px;
+        }
+        
+        button {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            active {
+                transform: scale(0.95);
+            }
+        }
+        
+        .btn-minus {
+            background-color: #e8f0ff;
+            border: 1px solid #b3d9ff;
+            color: #0066cc;
+        }
+        
+        .btn-minus:active {
+            background-color: #b3d9ff;
+            transform: scale(0.95);
+        }
+        
+        .btn-plus {
+            background-color: #0066cc;
+            border: 1px solid #0052a3;
+            color: white;
+        }
+        
+        .btn-plus:active {
+            background-color: #0052a3;
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bracket Leaderboard</h1>
+        <div class="leaderboard" id="leaderboard"></div>
+    </div>
+
+    <script>
+        const initialPlayers = [
+            { id: 1, name: 'Dad', score: 9 },
+            { id: 2, name: 'Logan', score: 12 },
+            { id: 3, name: 'Cooper', score: 12 },
+            { id: 4, name: 'Courtney', score: 9 },
+            { id: 5, name: 'LaRee', score: 9 },
+            { id: 6, name: 'Harmony', score: 7 },
+            { id: 7, name: 'Tanner', score: 2 },
+            { id: 8, name: 'Emma', score: 12 },
+        ];
+
+        let players = initialPlayers;
+
+        // Load from localStorage on page load
+        function loadPlayers() {
+            const saved = localStorage.getItem('bracketPlayers');
+            if (saved) {
+                try {
+                    players = JSON.parse(saved);
+                } catch (e) {
+                    players = initialPlayers;
+                }
+            }
+            render();
+        }
+
+        // Save to localStorage
+        function savePlayers() {
+            localStorage.setItem('bracketPlayers', JSON.stringify(players));
+        }
+
+        // Update score and re-render
+        function updateScore(id, delta) {
+            const player = players.find(p => p.id === id);
+            if (player) {
+                player.score += delta;
+                savePlayers();
+                render();
+            }
+        }
+
+        // Sort by score and calculate rankings
+        function getRankedPlayers() {
+            const sorted = [...players].sort((a, b) => b.score - a.score);
+            return sorted.map((player, index) => {
+                let rank;
+                if (index === 0) {
+                    rank = '1';
+                } else {
+                    const prevScore = sorted[index - 1].score;
+                    if (player.score === prevScore) {
+                        // Find the rank of the player before
+                        const prevRank = sorted
+                            .slice(0, index)
+                            .reverse()
+                            .find(p => p.score !== player.score);
+                        const prevRankNum = prevRank 
+                            ? sorted.indexOf(prevRank) + 1 
+                            : index + 1;
+                        rank = 'T' + prevRankNum;
+                    } else {
+                        rank = String(index + 1);
+                    }
+                }
+                return { ...player, rank };
+            });
+        }
+
+        // Render the leaderboard
+        function render() {
+            const ranked = getRankedPlayers();
+            const leaderboard = document.getElementById('leaderboard');
+            leaderboard.innerHTML = ranked.map(player => `
+                <div class="player-row">
+                    <div class="rank">${player.rank}</div>
+                    <div class="player-name">${player.name}</div>
+                    <div class="score">${player.score}</div>
+                    <div class="controls">
+                        <button class="btn-minus" onclick="updateScore(${player.id}, -1)">−</button>
+                        <button class="btn-plus" onclick="updateScore(${player.id}, 1)">+</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Initialize
+        loadPlayers();
+    </script>
+</body>
+</html>
