@@ -188,28 +188,21 @@
             }
         }
 
-        // Sort by score and calculate rankings
+        // Sort by score and calculate rankings (golf-style)
         function getRankedPlayers() {
             const sorted = [...players].sort((a, b) => b.score - a.score);
             return sorted.map((player, index) => {
+                // Rank is determined by how many players have a higher score
+                const playersAhead = sorted.filter(p => p.score > player.score).length;
+                const positionRank = playersAhead + 1;
+                
                 let rank;
-                if (index === 0) {
-                    rank = '1';
+                if (index === 0 || sorted[index - 1].score !== player.score) {
+                    // First player or not tied with previous
+                    rank = String(positionRank);
                 } else {
-                    const prevScore = sorted[index - 1].score;
-                    if (player.score === prevScore) {
-                        // Find the rank of the player before
-                        const prevRank = sorted
-                            .slice(0, index)
-                            .reverse()
-                            .find(p => p.score !== player.score);
-                        const prevRankNum = prevRank 
-                            ? sorted.indexOf(prevRank) + 1 
-                            : index + 1;
-                        rank = 'T' + prevRankNum;
-                    } else {
-                        rank = String(index + 1);
-                    }
+                    // Tied with previous player
+                    rank = 'T' + positionRank;
                 }
                 return { ...player, rank };
             });
